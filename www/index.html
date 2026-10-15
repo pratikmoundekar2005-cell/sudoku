@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0F0E13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Minimal Sudoku</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="app-viewport">
+    
+    <!-- VIEW 1: HOME -->
+    <section id="view-home" class="game-view active">
+      <div class="view-content home-content">
+        <!-- Remotion Emblem Container -->
+        <div id="remotion-home-emblem" class="emblem-container">
+          <video class="remotion-video" autoplay loop muted playsinline poster="">
+            <source src="assets/animations/home-emblem.mp4" type="video/mp4">
+            <source src="assets/animations/home-emblem.webm" type="video/webm">
+          </video>
+          <!-- 60fps Remotion Spring Physics Canvas Mount -->
+          <canvas id="canvas-home-emblem" class="remotion-canvas" width="280" height="280"></canvas>
+        </div>
+
+        <header class="home-header">
+          <h1 class="app-title">SUDOKU</h1>
+          <p class="app-subtitle">MINIMALIST OBSIDIAN</p>
+        </header>
+
+        <!-- Resume Game Card (dynamically displayed if active saved state exists) -->
+        <div id="home-resume-card" class="resume-card hidden">
+          <div class="resume-info">
+            <div class="resume-label-row">
+              <span class="resume-tag">IN PROGRESS</span>
+              <span id="home-resume-difficulty" class="resume-diff">▂▄_ MED</span>
+            </div>
+            <div class="resume-progress-row">
+              <span class="resume-title">Current Game</span>
+              <span id="home-resume-percent" class="resume-percentage">64%</span>
+            </div>
+            <div class="resume-progress-track">
+              <div id="home-resume-bar" class="resume-progress-fill" style="width: 64%;"></div>
+            </div>
+          </div>
+          <button id="btn-home-resume" class="btn-resume-action" aria-label="Resume active game">
+            <svg viewBox="0 0 24 24" class="svg-icon play-icon">
+              <polygon points="6 4 20 12 6 20 6 4" fill="#0F0E13"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="home-actions">
+          <button id="btn-goto-levels" class="btn-primary">
+            <span>NEW GAME</span>
+          </button>
+          <button id="btn-goto-history" class="btn-secondary">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+            <span>HISTORY & STATS</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: LEVEL SELECT -->
+    <section id="view-levels" class="game-view">
+      <div class="view-content levels-content">
+        <header class="view-header">
+          <button class="btn-icon btn-nav-back" data-target="view-home" aria-label="Back to Home">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <h2 class="view-title">DIFFICULTY</h2>
+          <div class="header-spacer"></div>
+        </header>
+
+        <div class="levels-container">
+          <!-- Easy -->
+          <button class="level-card" data-difficulty="easy">
+            <div class="level-card-left">
+              <!-- 3-Bar Signal Infographic: 1 lit -->
+              <svg viewBox="0 0 24 24" class="signal-svg" aria-hidden="true">
+                <rect x="3" y="15" width="4" height="6" rx="1.5" class="bar-lit" fill="#9D7BFF" />
+                <rect x="10" y="10" width="4" height="11" rx="1.5" class="bar-dim" fill="#F2EFF9" fill-opacity="0.15" />
+                <rect x="17" y="5" width="4" height="16" rx="1.5" class="bar-dim" fill="#F2EFF9" fill-opacity="0.15" />
+              </svg>
+              <div class="level-meta">
+                <span class="level-name">EASY</span>
+                <span class="level-desc">Gentle pacing & starter boards</span>
+              </div>
+            </div>
+            <div class="level-arrow">
+              <svg viewBox="0 0 24 24" class="svg-icon arrow-icon">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </div>
+          </button>
+
+          <!-- Medium -->
+          <button class="level-card" data-difficulty="medium">
+            <div class="level-card-left">
+              <!-- 3-Bar Signal Infographic: 2 lit -->
+              <svg viewBox="0 0 24 24" class="signal-svg" aria-hidden="true">
+                <rect x="3" y="15" width="4" height="6" rx="1.5" class="bar-lit" fill="#9D7BFF" />
+                <rect x="10" y="10" width="4" height="11" rx="1.5" class="bar-lit" fill="#9D7BFF" />
+                <rect x="17" y="5" width="4" height="16" rx="1.5" class="bar-dim" fill="#F2EFF9" fill-opacity="0.15" />
+              </svg>
+              <div class="level-meta">
+                <span class="level-name">MEDIUM</span>
+                <span class="level-desc">Balanced logic & technique</span>
+              </div>
+            </div>
+            <div class="level-arrow">
+              <svg viewBox="0 0 24 24" class="svg-icon arrow-icon">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </div>
+          </button>
+
+          <!-- Hard -->
+          <button class="level-card" data-difficulty="hard">
+            <div class="level-card-left">
+              <!-- 3-Bar Signal Infographic: 3 lit -->
+              <svg viewBox="0 0 24 24" class="signal-svg" aria-hidden="true">
+                <rect x="3" y="15" width="4" height="6" rx="1.5" class="bar-lit" fill="#9D7BFF" />
+                <rect x="10" y="10" width="4" height="11" rx="1.5" class="bar-lit" fill="#9D7BFF" />
+                <rect x="17" y="5" width="4" height="16" rx="1.5" class="bar-lit" fill="#9D7BFF" />
+              </svg>
+              <div class="level-meta">
+                <span class="level-name">HARD</span>
+                <span class="level-desc">Advanced deduction & candidate work</span>
+              </div>
+            </div>
+            <div class="level-arrow">
+              <svg viewBox="0 0 24 24" class="svg-icon arrow-icon">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: GAME ARENA -->
+    <section id="view-game" class="game-view">
+      <div class="view-content game-content">
+        
+        <!-- Top Infographic Header -->
+        <header class="game-header">
+          <!-- Back to Home -->
+          <button id="btn-game-back" class="btn-icon" aria-label="Exit Game to Home">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+
+          <!-- 1.5px Circular SVG Progress Ring with completion number inside -->
+          <div class="progress-ring-container" title="Board Completion Progress">
+            <svg class="progress-ring" viewBox="0 0 44 44">
+              <circle class="ring-bg" cx="22" cy="22" r="18" stroke="#F2EFF9" stroke-opacity="0.12" stroke-width="1.5" fill="none"/>
+              <circle id="game-progress-ring-bar" class="ring-fg" cx="22" cy="22" r="18" stroke="#9D7BFF" stroke-width="1.5" fill="none"
+                      stroke-dasharray="113.1" stroke-dashoffset="40.7" stroke-linecap="round"/>
+            </svg>
+            <span id="game-progress-text" class="progress-number">64</span>
+          </div>
+
+          <!-- Tappable Center Difficulty Signal Widget -->
+          <button id="btn-difficulty-signal" class="difficulty-signal-widget" aria-label="Difficulty Signal">
+            <svg viewBox="0 0 16 12" class="signal-mini-bars">
+              <rect x="1" y="8" width="3" height="4" rx="1" class="sig-b1" fill="#9D7BFF" />
+              <rect x="6.5" y="4" width="3" height="8" rx="1" class="sig-b2" fill="#9D7BFF" />
+              <rect x="12" y="1" width="3" height="11" rx="1" class="sig-b3" fill="#F2EFF9" fill-opacity="0.2" />
+            </svg>
+            <span id="game-difficulty-label" class="difficulty-label">MED</span>
+          </button>
+
+          <!-- 3 Amethyst Mistake Dots -->
+          <div class="mistake-dots-group" title="Mistakes Counter">
+            <span class="mistake-dot active" data-index="0"></span>
+            <span class="mistake-dot active" data-index="1"></span>
+            <span class="mistake-dot" data-index="2"></span>
+          </div>
+        </header>
+
+        <!-- Board Container (Placeholder 9x9 grid container ready for Phase 2) -->
+        <main class="board-wrapper">
+          <div id="sudoku-board" class="sudoku-grid-container" aria-label="Sudoku Board">
+            <!-- 81 cell shells populated or dynamically rendered in Phase 2 -->
+          </div>
+        </main>
+
+        <!-- Floating Utility Row: Strictly 2 borderless, bracketless floating SVG line icons for Undo & Notes -->
+        <div class="floating-utility-row">
+          <button id="btn-undo" class="utility-action-btn" aria-label="Undo move">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+
+          <button id="btn-notes" class="utility-action-btn" aria-label="Toggle notes mode">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+            <!-- Amethyst active dot indicating notes mode status -->
+            <span id="notes-active-dot" class="utility-active-dot hidden"></span>
+          </button>
+        </div>
+
+        <!-- Symmetrical 5x2 Keypad -->
+        <footer class="keypad-footer">
+          <div class="keypad-grid">
+            <!-- Top row: 1-5 -->
+            <button class="key-btn" data-key="1">
+              <span class="key-digit">1</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 70%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="2">
+              <span class="key-digit">2</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 50%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="3">
+              <span class="key-digit">3</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 90%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="4">
+              <span class="key-digit">4</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 30%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="5">
+              <span class="key-digit">5</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 80%;"></span></div>
+            </button>
+
+            <!-- Bottom row: 6-9 + Erase -->
+            <button class="key-btn" data-key="6">
+              <span class="key-digit">6</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 60%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="7">
+              <span class="key-digit">7</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 40%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="8">
+              <span class="key-digit">8</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
+            </button>
+            <button class="key-btn" data-key="9">
+              <span class="key-digit">9</span>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 20%;"></span></div>
+            </button>
+            <button id="btn-erase" class="key-btn key-erase" data-key="erase" aria-label="Erase Cell">
+              <svg viewBox="0 0 24 24" class="svg-icon erase-icon">
+                <path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2zM18 9l-6 6M12 9l6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+          </div>
+        </footer>
+
+      </div>
+    </section>
+
+    <!-- VIEW 4: HISTORY & STATS -->
+    <section id="view-history" class="game-view">
+      <div class="view-content history-content">
+        <header class="view-header">
+          <button class="btn-icon btn-nav-back" data-target="view-home" aria-label="Back to Home">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <h2 class="view-title">HISTORY & STATS</h2>
+          <div class="header-spacer"></div>
+        </header>
+
+        <!-- Top summary infographic row (Games Won, Win Rate ring, Best Streak) -->
+        <div class="stats-summary-row">
+          <div class="stat-card">
+            <span class="stat-label">WON</span>
+            <span id="stat-games-won" class="stat-value">28</span>
+          </div>
+
+          <div class="stat-card stat-card-featured">
+            <div class="stat-ring-box">
+              <svg class="stat-progress-ring" viewBox="0 0 54 54">
+                <circle cx="27" cy="27" r="23" stroke="#F2EFF9" stroke-opacity="0.12" stroke-width="2.5" fill="none"/>
+                <circle id="stat-winrate-ring" cx="27" cy="27" r="23" stroke="#9D7BFF" stroke-width="2.5" fill="none"
+                        stroke-dasharray="144.5" stroke-dashoffset="28.9" stroke-linecap="round"/>
+              </svg>
+              <div class="stat-ring-content">
+                <span id="stat-win-rate" class="stat-ring-value">80</span>
+                <span class="stat-ring-symbol">%</span>
+              </div>
+            </div>
+            <span class="stat-label">WIN RATE</span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">STREAK</span>
+            <span id="stat-best-streak" class="stat-value">7</span>
+          </div>
+        </div>
+
+        <!-- Scrollable list container for completed games -->
+        <div class="history-list-section">
+          <span class="history-section-title">RECENT MATCHES</span>
+          <div id="history-list" class="history-list-container">
+            <!-- Sample history entry shells -->
+            <div class="history-item">
+              <div class="history-item-left">
+                <svg viewBox="0 0 16 12" class="signal-mini-bars">
+                  <rect x="1" y="8" width="3" height="4" rx="1" fill="#9D7BFF" />
+                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="#9D7BFF" />
+                  <rect x="12" y="1" width="3" height="11" rx="1" fill="#9D7BFF" />
+                </svg>
+                <div class="history-details">
+                  <span class="history-difficulty">HARD</span>
+                  <span class="history-date">Today, 10:14 AM</span>
+                </div>
+              </div>
+              <div class="history-status completed">
+                <span>SOLVED</span>
+              </div>
+            </div>
+
+            <div class="history-item">
+              <div class="history-item-left">
+                <svg viewBox="0 0 16 12" class="signal-mini-bars">
+                  <rect x="1" y="8" width="3" height="4" rx="1" fill="#9D7BFF" />
+                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="#9D7BFF" />
+                  <rect x="12" y="1" width="3" height="11" rx="1" fill="#F2EFF9" fill-opacity="0.2" />
+                </svg>
+                <div class="history-details">
+                  <span class="history-difficulty">MEDIUM</span>
+                  <span class="history-date">Yesterday, 9:30 PM</span>
+                </div>
+              </div>
+              <div class="history-status completed">
+                <span>SOLVED</span>
+              </div>
+            </div>
+
+            <div class="history-item">
+              <div class="history-item-left">
+                <svg viewBox="0 0 16 12" class="signal-mini-bars">
+                  <rect x="1" y="8" width="3" height="4" rx="1" fill="#9D7BFF" />
+                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="#F2EFF9" fill-opacity="0.2" />
+                  <rect x="12" y="1" width="3" height="11" rx="1" fill="#F2EFF9" fill-opacity="0.2" />
+                </svg>
+                <div class="history-details">
+                  <span class="history-difficulty">EASY</span>
+                  <span class="history-date">Oct 13, 4:12 PM</span>
+                </div>
+              </div>
+              <div class="history-status completed">
+                <span>SOLVED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VICTORY / GAME OVER MODAL -->
+    <div id="modal-result" class="modal-backdrop hidden" aria-modal="true" role="dialog">
+      <div class="modal-card">
+        <!-- Remotion Victory Animation Mount -->
+        <div id="remotion-victory-anim" class="modal-animation-container">
+          <video class="remotion-video" muted playsinline>
+            <source src="assets/animations/victory-burst.mp4" type="video/mp4">
+            <source src="assets/animations/victory-burst.webm" type="video/webm">
+          </video>
+          <!-- 60fps Remotion Spring Physics Canvas Mount -->
+          <canvas id="canvas-victory-burst" class="remotion-canvas" width="220" height="220"></canvas>
+        </div>
+
+        <h3 id="modal-result-title" class="modal-title">BOARD COMPLETE</h3>
+        <p id="modal-result-subtitle" class="modal-subtitle">Pristine deduction. 0 errors made.</p>
+
+        <div class="modal-stats-grid">
+          <div class="modal-stat-item">
+            <span class="modal-stat-label">TIME</span>
+            <span id="modal-stat-time" class="modal-stat-value">04:32</span>
+          </div>
+          <div class="modal-stat-item">
+            <span class="modal-stat-label">DIFFICULTY</span>
+            <span id="modal-stat-difficulty" class="modal-stat-value">MEDIUM</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-modal-play-again" class="btn-primary">
+            <span>PLAY AGAIN</span>
+          </button>
+          <button id="btn-modal-home" class="btn-secondary">
+            <span>RETURN HOME</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

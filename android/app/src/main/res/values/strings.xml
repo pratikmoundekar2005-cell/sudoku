@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MinimalSudoku</string>
+    <string name="title_activity_main">MinimalSudoku</string>
+    <string name="package_name">com.pratik.sudoku</string>
+    <string name="custom_url_scheme">com.pratik.sudoku</string>
+</resources>
