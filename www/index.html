@@ -15,6 +15,16 @@
     <!-- VIEW 1: HOME -->
     <section id="view-home" class="game-view active">
       <div class="view-content home-content">
+        <header class="home-top-bar">
+          <div class="top-bar-spacer"></div>
+          <button id="btn-home-settings" class="btn-icon" aria-label="Open Settings">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+        </header>
+
         <!-- Pure 60fps Geometric Canvas Emblem -->
         <div id="remotion-home-emblem" class="emblem-container" aria-hidden="true">
           <canvas id="canvas-home-emblem" class="remotion-canvas" width="280" height="280"></canvas>
@@ -25,7 +35,7 @@
           <p class="app-subtitle">MINIMALIST OBSIDIAN</p>
         </header>
 
-        <!-- Resume Game Card (dynamically displayed if active saved state exists) -->
+        <!-- Resume Game Card (displayed if active saved state exists) -->
         <div id="home-resume-card" class="resume-card hidden">
           <div class="resume-info">
             <div class="resume-label-row">
@@ -34,14 +44,33 @@
             </div>
             <div class="resume-progress-row">
               <span class="resume-title">Current Game</span>
-              <span id="home-resume-percent" class="resume-percentage">64%</span>
+              <span id="home-resume-percent" class="resume-percentage">0%</span>
             </div>
             <div class="resume-progress-track">
-              <div id="home-resume-bar" class="resume-progress-fill" style="width: 64%;"></div>
+              <div id="home-resume-bar" class="resume-progress-fill" style="width: 0%;"></div>
             </div>
           </div>
           <button id="btn-home-resume" class="btn-resume-action" aria-label="Resume active game">
             <svg viewBox="0 0 24 24" class="svg-icon play-icon">
+              <polygon points="6 4 20 12 6 20 6 4" fill="#0F0E13"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Daily Challenge Card -->
+        <div id="home-daily-card" class="daily-card">
+          <div class="daily-info">
+            <div class="daily-label-row">
+              <span id="daily-date-label" class="daily-tag">DAILY CHALLENGE</span>
+              <span id="daily-status-badge" class="daily-badge-status">NEW</span>
+            </div>
+            <div class="daily-title-row">
+              <span class="daily-title">Today's Puzzle</span>
+              <span id="daily-streak-badge" class="daily-streak-text">🔥 0 streak</span>
+            </div>
+          </div>
+          <button id="btn-home-daily" class="btn-daily-action" aria-label="Play daily challenge">
+            <svg viewBox="0 0 24 24" class="svg-icon">
               <polygon points="6 4 20 12 6 20 6 4" fill="#0F0E13"/>
             </svg>
           </button>
@@ -79,7 +108,6 @@
           <!-- Easy -->
           <button class="level-card" data-difficulty="easy">
             <div class="level-card-left">
-              <!-- 3-Bar Signal Infographic: 1 lit -->
               <svg viewBox="0 0 24 24" class="signal-svg" aria-hidden="true">
                 <rect x="3" y="15" width="4" height="6" rx="1.5" class="bar-lit" fill="#9D7BFF" />
                 <rect x="10" y="10" width="4" height="11" rx="1.5" class="bar-dim" fill="#F2EFF9" fill-opacity="0.15" />
@@ -87,7 +115,7 @@
               </svg>
               <div class="level-meta">
                 <span class="level-name">EASY</span>
-                <span class="level-desc">Gentle pacing & starter boards</span>
+                <span class="level-desc">Naked & hidden singles deduction</span>
               </div>
             </div>
             <div class="level-arrow">
@@ -100,7 +128,6 @@
           <!-- Medium -->
           <button class="level-card" data-difficulty="medium">
             <div class="level-card-left">
-              <!-- 3-Bar Signal Infographic: 2 lit -->
               <svg viewBox="0 0 24 24" class="signal-svg" aria-hidden="true">
                 <rect x="3" y="15" width="4" height="6" rx="1.5" class="bar-lit" fill="#9D7BFF" />
                 <rect x="10" y="10" width="4" height="11" rx="1.5" class="bar-lit" fill="#9D7BFF" />
@@ -108,7 +135,7 @@
               </svg>
               <div class="level-meta">
                 <span class="level-name">MEDIUM</span>
-                <span class="level-desc">Balanced logic & technique</span>
+                <span class="level-desc">Pairs & pointing candidates</span>
               </div>
             </div>
             <div class="level-arrow">
@@ -121,7 +148,6 @@
           <!-- Hard -->
           <button class="level-card" data-difficulty="hard">
             <div class="level-card-left">
-              <!-- 3-Bar Signal Infographic: 3 lit -->
               <svg viewBox="0 0 24 24" class="signal-svg" aria-hidden="true">
                 <rect x="3" y="15" width="4" height="6" rx="1.5" class="bar-lit" fill="#9D7BFF" />
                 <rect x="10" y="10" width="4" height="11" rx="1.5" class="bar-lit" fill="#9D7BFF" />
@@ -129,7 +155,7 @@
               </svg>
               <div class="level-meta">
                 <span class="level-name">HARD</span>
-                <span class="level-desc">Advanced deduction & candidate work</span>
+                <span class="level-desc">Advanced candidate reductions</span>
               </div>
             </div>
             <div class="level-arrow">
@@ -160,9 +186,9 @@
             <svg class="progress-ring" viewBox="0 0 44 44">
               <circle class="ring-bg" cx="22" cy="22" r="18" stroke="#F2EFF9" stroke-opacity="0.12" stroke-width="1.5" fill="none"/>
               <circle id="game-progress-ring-bar" class="ring-fg" cx="22" cy="22" r="18" stroke="#9D7BFF" stroke-width="1.5" fill="none"
-                      stroke-dasharray="113.1" stroke-dashoffset="40.7" stroke-linecap="round"/>
+                      stroke-dasharray="113.1" stroke-dashoffset="113.1" stroke-linecap="round"/>
             </svg>
-            <span id="game-progress-text" class="progress-number">64</span>
+            <span id="game-progress-text" class="progress-number">0</span>
           </div>
 
           <!-- Tappable Center Difficulty Signal Widget -->
@@ -175,35 +201,68 @@
             <span id="game-difficulty-label" class="difficulty-label">MED</span>
           </button>
 
-          <!-- 3 Amethyst Mistake Dots -->
-          <div class="mistake-dots-group" title="Mistakes Counter">
-            <span class="mistake-dot active" data-index="0"></span>
-            <span class="mistake-dot active" data-index="1"></span>
+          <!-- 3 Amethyst Mistake Dots / Relaxed Status -->
+          <div id="mistake-container" class="mistake-dots-group" title="Mistakes Counter">
+            <span class="mistake-dot" data-index="0"></span>
+            <span class="mistake-dot" data-index="1"></span>
             <span class="mistake-dot" data-index="2"></span>
           </div>
+
+          <!-- Game Settings Quick Access -->
+          <button id="btn-game-settings" class="btn-icon" aria-label="Game Settings">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
         </header>
 
-        <!-- Board Container (Placeholder 9x9 grid container ready for Phase 2) -->
+        <!-- Board Container -->
         <main class="board-wrapper">
           <div id="sudoku-board" class="sudoku-grid-container" role="grid" aria-label="Sudoku Board">
-            <!-- 81 cell shells populated or dynamically rendered in Phase 2 -->
+            <!-- 81 cells rendered by app.js -->
           </div>
         </main>
 
-        <!-- Floating Utility Row: Strictly 2 borderless, bracketless floating SVG line icons for Undo & Notes -->
+        <!-- Explainable Smart Hint Floating Banner -->
+        <div id="hint-banner" class="hint-banner hidden" role="region" aria-live="polite">
+          <div class="hint-banner-content">
+            <div class="hint-top-row">
+              <span id="hint-type-badge" class="hint-badge">NAKED SINGLE</span>
+              <button id="btn-close-hint" class="hint-close-btn" aria-label="Dismiss Hint">✕</button>
+            </div>
+            <p id="hint-explanation" class="hint-text">Examining board for the next logical step...</p>
+            <div class="hint-actions">
+              <button id="btn-apply-hint" class="btn-hint-apply">APPLY HINT</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Utility Row: Undo, Redo, Notes, Smart Hint -->
         <div class="floating-utility-row">
-          <button id="btn-undo" class="utility-action-btn" aria-label="Undo move">
+          <button id="btn-undo" class="utility-action-btn" aria-label="Undo move" title="Undo (Ctrl+Z / u)">
             <svg viewBox="0 0 24 24" class="svg-icon">
               <path d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             </svg>
           </button>
 
-          <button id="btn-notes" class="utility-action-btn" aria-label="Toggle notes mode">
+          <button id="btn-redo" class="utility-action-btn btn-disabled" aria-label="Redo move" title="Redo (Ctrl+Y / r)">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M21 10H11a5 5 0 00-5 5v2M21 10l-5-5M21 10l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+
+          <button id="btn-notes" class="utility-action-btn" aria-label="Toggle notes mode" title="Notes mode (n)">
             <svg viewBox="0 0 24 24" class="svg-icon">
               <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             </svg>
-            <!-- Amethyst active dot indicating notes mode status -->
             <span id="notes-active-dot" class="utility-active-dot hidden"></span>
+          </button>
+
+          <button id="btn-hint" class="utility-action-btn" aria-label="Smart Hint" title="Smart Hint (h)">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M9 18h6M10 22h4m-2-20a7 7 0 00-7 7c0 2.6 1.4 4.8 3.5 6 .6.3 1 1 1 1.7V17a1 1 0 001 1h4a1 1 0 001-1v-.3c0-.7.4-1.4 1-1.7 2.1-1.2 3.5-3.4 3.5-6a7 7 0 00-7-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
           </button>
         </div>
 
@@ -213,33 +272,33 @@
             <!-- Top row: 1-5 -->
             <button class="key-btn" data-key="1">
               <span class="key-digit">1</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 70%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button class="key-btn" data-key="2">
               <span class="key-digit">2</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 50%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button class="key-btn" data-key="3">
               <span class="key-digit">3</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 90%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button class="key-btn" data-key="4">
               <span class="key-digit">4</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 30%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button class="key-btn" data-key="5">
               <span class="key-digit">5</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 80%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
 
             <!-- Bottom row: 6-9 + Erase -->
             <button class="key-btn" data-key="6">
               <span class="key-digit">6</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 60%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button class="key-btn" data-key="7">
               <span class="key-digit">7</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 40%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button class="key-btn" data-key="8">
               <span class="key-digit">8</span>
@@ -247,7 +306,7 @@
             </button>
             <button class="key-btn" data-key="9">
               <span class="key-digit">9</span>
-              <div class="key-micro-progress"><span class="micro-fill" style="width: 20%;"></span></div>
+              <div class="key-micro-progress"><span class="micro-fill" style="width: 100%;"></span></div>
             </button>
             <button id="btn-erase" class="key-btn key-erase" data-key="erase" aria-label="Erase Cell">
               <svg viewBox="0 0 24 24" class="svg-icon erase-icon">
@@ -273,11 +332,16 @@
           <div class="header-spacer"></div>
         </header>
 
-        <!-- Top summary infographic row (Games Won, Win Rate ring, Best Streak) -->
+        <!-- Top summary infographic row -->
         <div class="stats-summary-row">
           <div class="stat-card">
-            <span class="stat-label">WON</span>
-            <span id="stat-games-won" class="stat-value">28</span>
+            <span class="stat-label">STARTED</span>
+            <span id="stat-games-started" class="stat-value">0</span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">SOLVED</span>
+            <span id="stat-games-won" class="stat-value">0</span>
           </div>
 
           <div class="stat-card stat-card-featured">
@@ -285,10 +349,10 @@
               <svg class="stat-progress-ring" viewBox="0 0 54 54">
                 <circle cx="27" cy="27" r="23" stroke="#F2EFF9" stroke-opacity="0.12" stroke-width="2.5" fill="none"/>
                 <circle id="stat-winrate-ring" cx="27" cy="27" r="23" stroke="#9D7BFF" stroke-width="2.5" fill="none"
-                        stroke-dasharray="144.5" stroke-dashoffset="28.9" stroke-linecap="round"/>
+                        stroke-dasharray="144.5" stroke-dashoffset="144.5" stroke-linecap="round"/>
               </svg>
               <div class="stat-ring-content">
-                <span id="stat-win-rate" class="stat-ring-value">80</span>
+                <span id="stat-win-rate" class="stat-ring-value">0</span>
                 <span class="stat-ring-symbol">%</span>
               </div>
             </div>
@@ -297,7 +361,30 @@
 
           <div class="stat-card">
             <span class="stat-label">STREAK</span>
-            <span id="stat-best-streak" class="stat-value">7</span>
+            <span id="stat-best-streak" class="stat-value">0</span>
+          </div>
+        </div>
+
+        <!-- Best Times Grid -->
+        <div class="best-times-section">
+          <span class="history-section-title">BEST TIMES</span>
+          <div class="best-times-grid">
+            <div class="best-time-item">
+              <span class="best-diff-label">EASY</span>
+              <span id="best-time-easy" class="best-time-value">--:--</span>
+            </div>
+            <div class="best-time-item">
+              <span class="best-diff-label">MEDIUM</span>
+              <span id="best-time-medium" class="best-time-value">--:--</span>
+            </div>
+            <div class="best-time-item">
+              <span class="best-diff-label">HARD</span>
+              <span id="best-time-hard" class="best-time-value">--:--</span>
+            </div>
+            <div class="best-time-item">
+              <span class="best-diff-label">DAILY</span>
+              <span id="best-time-daily" class="best-time-value">--:--</span>
+            </div>
           </div>
         </div>
 
@@ -305,57 +392,7 @@
         <div class="history-list-section">
           <span class="history-section-title">RECENT MATCHES</span>
           <div id="history-list" class="history-list-container">
-            <!-- Sample history entry shells -->
-            <div class="history-item">
-              <div class="history-item-left">
-                <svg viewBox="0 0 16 12" class="signal-mini-bars">
-                  <rect x="1" y="8" width="3" height="4" rx="1" fill="#9D7BFF" />
-                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="#9D7BFF" />
-                  <rect x="12" y="1" width="3" height="11" rx="1" fill="#9D7BFF" />
-                </svg>
-                <div class="history-details">
-                  <span class="history-difficulty">HARD</span>
-                  <span class="history-date">Today, 10:14 AM</span>
-                </div>
-              </div>
-              <div class="history-status completed">
-                <span>SOLVED</span>
-              </div>
-            </div>
-
-            <div class="history-item">
-              <div class="history-item-left">
-                <svg viewBox="0 0 16 12" class="signal-mini-bars">
-                  <rect x="1" y="8" width="3" height="4" rx="1" fill="#9D7BFF" />
-                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="#9D7BFF" />
-                  <rect x="12" y="1" width="3" height="11" rx="1" fill="#F2EFF9" fill-opacity="0.2" />
-                </svg>
-                <div class="history-details">
-                  <span class="history-difficulty">MEDIUM</span>
-                  <span class="history-date">Yesterday, 9:30 PM</span>
-                </div>
-              </div>
-              <div class="history-status completed">
-                <span>SOLVED</span>
-              </div>
-            </div>
-
-            <div class="history-item">
-              <div class="history-item-left">
-                <svg viewBox="0 0 16 12" class="signal-mini-bars">
-                  <rect x="1" y="8" width="3" height="4" rx="1" fill="#9D7BFF" />
-                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="#F2EFF9" fill-opacity="0.2" />
-                  <rect x="12" y="1" width="3" height="11" rx="1" fill="#F2EFF9" fill-opacity="0.2" />
-                </svg>
-                <div class="history-details">
-                  <span class="history-difficulty">EASY</span>
-                  <span class="history-date">Oct 13, 4:12 PM</span>
-                </div>
-              </div>
-              <div class="history-status completed">
-                <span>SOLVED</span>
-              </div>
-            </div>
+            <!-- Populated safely via DOM APIs in app.js -->
           </div>
         </div>
 
@@ -406,6 +443,76 @@
           </button>
           <button id="btn-cancel-new-game" class="btn-secondary">
             <span>RESUME CURRENT</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="modal-settings" class="modal-backdrop hidden" aria-modal="true" role="dialog">
+      <div class="modal-card modal-settings-card">
+        <header class="modal-header-row">
+          <h3 class="modal-title">SETTINGS</h3>
+          <button id="btn-close-settings" class="btn-icon" aria-label="Close Settings">
+            <svg viewBox="0 0 24 24" class="svg-icon">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </header>
+
+        <div class="settings-list">
+          <!-- Relaxed Mode -->
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <span class="settings-item-title">Relaxed Mode</span>
+              <span class="settings-item-desc">Unlimited mistakes; no 3-mistake game over</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-relaxed-mode">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Highlight Matching Digits -->
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <span class="settings-item-title">Highlight Matching Digits</span>
+              <span class="settings-item-desc">Highlight identical numbers across the grid</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-highlight-matching" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Auto-Remove Notes -->
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <span class="settings-item-title">Auto-Remove Notes</span>
+              <span class="settings-item-desc">Prune pencil notes in peer cells on entry</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-auto-prune-notes" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Highlight Conflicts -->
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <span class="settings-item-title">Instant Conflict Alert</span>
+              <span class="settings-item-desc">Haptic vibration and cell conflict flash</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-instant-conflicts" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 24px;">
+          <button id="btn-done-settings" class="btn-primary">
+            <span>DONE</span>
           </button>
         </div>
       </div>

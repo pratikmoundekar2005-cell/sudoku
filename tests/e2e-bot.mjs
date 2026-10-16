@@ -580,6 +580,316 @@ async function runTestSuite() {
   }
 
   // =========================================================================
+  // TEST SUITE 6: REDO STACK & BIDIRECTIONAL UNDO/REDO ENGINE
+  // =========================================================================
+  logSuite('SUITE 6: Bidirectional Undo/Redo & Stack Limits');
+  {
+    const { document, engine } = createEnv();
+    engine.startNewGame('EASY');
+
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
+
+    // Initially both stacks empty
+    assert.strictEqual(engine.getState().undoStack.length, 0);
+    assert.strictEqual(engine.getState().redoStack.length, 0);
+    assert.ok(btnUndo.classList.contains('btn-disabled'), 'Undo button must be disabled initially');
+    assert.ok(btnRedo.classList.contains('btn-disabled'), 'Redo button must be disabled initially');
+
+    // Find empty cell
+    const state = engine.getState();
+    let r = -1, c = -1;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (state.board[i][j] === 0) {
+          r = i;
+          c = j;
+          break;
+        }
+      }
+      if (r !== -1) break;
+    }
+
+    const sol = state.solution[r][c];
+    engine.selectCell(r, c);
+    engine.handleNumberInput(sol);
+
+    // After move: undoStack = 1, redoStack = 0
+    assert.strictEqual(engine.getState().board[r][c], sol);
+    assert.strictEqual(engine.getState().undoStack.length, 1);
+    assert.strictEqual(engine.getState().redoStack.length, 0);
+    assert.ok(!btnUndo.classList.contains('btn-disabled'), 'Undo button enabled after move');
+    assert.ok(btnRedo.classList.contains('btn-disabled'), 'Redo button disabled after move');
+
+    // Undo the move
+    engine.handleUndo();
+    assert.strictEqual(engine.getState().board[r][c], 0, 'Cell reverted to 0');
+    assert.strictEqual(engine.getState().undoStack.length, 0);
+    assert.strictEqual(engine.getState().redoStack.length, 1, 'Redo stack has 1 snapshot');
+    assert.ok(btnUndo.classList.contains('btn-disabled'), 'Undo button disabled');
+    assert.ok(!btnRedo.classList.contains('btn-disabled'), 'Redo button enabled');
+
+    // Redo the move
+    engine.handleRedo();
+    assert.strictEqual(engine.getState().board[r][c], sol, 'Cell restored to solution value');
+    assert.strictEqual(engine.getState().undoStack.length, 1);
+    assert.strictEqual(engine.getState().redoStack.length, 0);
+
+    // Undo again, then make a new move -> Redo stack must be cleared
+    engine.handleUndo();
+    assert.strictEqual(engine.getState().redoStack.length, 1);
+    engine.toggleNotesMode();
+    engine.selectCell(r, c);
+    engine.handleNumberInput(sol);
+    assert.strictEqual(engine.getState().redoStack.length, 0, 'New action clears redo stack');
+    engine.toggleNotesMode();
+
+    logPass('Full bidirectional Undo/Redo cycles function with immediate UI updates');
+    totalTests += 6;
+  }
+
+  // =========================================================================
+  // TEST SUITE 7: EXPLAINABLE SMART HINT ENGINE
+  // =========================================================================
+  logSuite('SUITE 7: Explainable Smart Hint Engine & Conflict Diagnosis');
+  {
+    const { document, engine } = createEnv();
+    engine.startNewGame('EASY');
+
+    const hint = engine.computeSmartHint();
+    assert.ok(hint, 'Smart hint must be computed');
+    assert.ok(
+      ['NAKED SINGLE', 'HIDDEN SINGLE', 'LOGICAL STEP'].includes(hint.type),
+      `Hint type must be valid technique: ${hint.type}`
+    );
+    assert.strictEqual(
+      hint.targetVal,
+      engine.getState().solution[hint.row][hint.col],
+      'Hint target value must match board solution'
+    );
+    assert.ok(hint.explanation.length > 10, 'Hint explanation must be descriptive');
+
+    // Trigger hint via UI
+    document.getElementById('btn-hint').click();
+    assert.strictEqual(
+      document.getElementById('hint-banner').classList.contains('hidden'),
+      false,
+      'Hint banner must open'
+    );
+    assert.strictEqual(
+      document.getElementById('hint-type-badge').textContent.trim(),
+      hint.type
+    );
+
+    // Apply hint via button
+    document.getElementById('btn-apply-hint').click();
+    assert.strictEqual(
+      engine.getState().board[hint.row][hint.col],
+      hint.targetVal,
+      'Cell must be filled with hint value'
+    );
+    assert.strictEqual(
+      document.getElementById('hint-banner').classList.contains('hidden'),
+      true,
+      'Hint banner must dismiss on apply'
+    );
+
+    // Test conflict diagnosis
+    let emptyR = -1, emptyC = -1;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (engine.getState().board[i][j] === 0) {
+          emptyR = i;
+          emptyC = j;
+          break;
+        }
+      }
+      if (emptyR !== -1) break;
+    }
+    const wrongVal = (engine.getState().solution[emptyR][emptyC] % 9) + 1;
+    engine.getState().board[emptyR][emptyC] = wrongVal; // inject conflict
+
+    const conflictHint = engine.computeSmartHint();
+    assert.ok(conflictHint, 'Conflict hint must be returned');
+    assert.strictEqual(conflictHint.type, 'CONFLICT FOUND');
+    assert.strictEqual(conflictHint.row, emptyR);
+    assert.strictEqual(conflictHint.col, emptyC);
+
+    logPass('Smart hints accurately identify Singles, explain deductions, and diagnose conflicts');
+    totalTests += 7;
+  }
+
+  // =========================================================================
+  // TEST SUITE 8: RELAXED MODE VS CLASSIC MODE
+  // =========================================================================
+  logSuite('SUITE 8: Relaxed Mode vs Classic Mode (Mistake Handling)');
+  {
+    const { document, engine } = createEnv();
+    engine.startNewGame('EASY');
+
+    // 1. Enable Relaxed Mode
+    engine.setSettings({ relaxedMode: true });
+    assert.strictEqual(engine.getState().settings.relaxedMode, true);
+    assert.ok(
+      document.getElementById('mistake-container').textContent.includes('RELAXED'),
+      'Header reflects relaxed mode'
+    );
+
+    let r = -1, c = -1;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (engine.getState().board[i][j] === 0) {
+          r = i;
+          c = j;
+          break;
+        }
+      }
+      if (r !== -1) break;
+    }
+    engine.selectCell(r, c);
+    const wrong = (engine.getState().solution[r][c] % 9) + 1;
+
+    // Input 4 consecutive wrong entries in relaxed mode
+    engine.handleNumberInput(wrong);
+    engine.handleNumberInput(wrong);
+    engine.handleNumberInput(wrong);
+    engine.handleNumberInput(wrong);
+
+    assert.strictEqual(engine.getState().mistakes, 4);
+    assert.strictEqual(
+      engine.getState().status,
+      'PLAYING',
+      'Relaxed mode must never trigger Game Over on mistakes'
+    );
+    assert.strictEqual(
+      document.getElementById('modal-result').classList.contains('hidden'),
+      true,
+      'Modal result must remain hidden'
+    );
+
+    // 2. Switch back to Classic Mode
+    engine.setSettings({ relaxedMode: false });
+    // Next mistake in classic mode (with mistakes >= 3) triggers Game Over
+    engine.handleNumberInput(wrong);
+    assert.strictEqual(engine.getState().status, 'LOST');
+    assert.strictEqual(
+      document.getElementById('modal-result').classList.contains('hidden'),
+      false,
+      'Modal result triggers in classic mode'
+    );
+
+    logPass('Relaxed Mode allows unlimited mistakes without game over; Classic Mode strictly enforces limit');
+    totalTests += 5;
+  }
+
+  // =========================================================================
+  // TEST SUITE 9: DETERMINISTIC DAILY CHALLENGE & STREAK TRACKING
+  // =========================================================================
+  logSuite('SUITE 9: Deterministic Daily Challenge & Streak Tracking');
+  {
+    const { engine, window } = createEnv();
+
+    const d1 = engine.generateDailyPuzzle('2026-10-16');
+    const d2 = engine.generateDailyPuzzle('2026-10-16');
+    const d3 = engine.generateDailyPuzzle('2026-10-17');
+
+    // 1. Same date produces byte-identical puzzle & solution
+    assert.deepStrictEqual(d1.puzzle, d2.puzzle, 'Puzzles for same date must match 100%');
+    assert.deepStrictEqual(d1.solution, d2.solution, 'Solutions for same date must match 100%');
+
+    // 2. Different date produces different puzzle
+    assert.notDeepStrictEqual(d1.puzzle, d3.puzzle, 'Different dates must produce different boards');
+
+    // 3. Play & solve Daily puzzle
+    engine.startNewGame('DAILY', true);
+    assert.strictEqual(engine.getState().difficulty, 'DAILY');
+    assert.strictEqual(engine.getState().isDaily, true);
+
+    // Solve the daily board
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (engine.getState().board[r][c] === 0) {
+          engine.selectCell(r, c);
+          engine.handleNumberInput(engine.getState().solution[r][c]);
+        }
+      }
+    }
+
+    assert.strictEqual(engine.getState().status, 'WON');
+    const dailyState = engine.getDailyState();
+    assert.ok(dailyState, 'Daily state must be saved');
+    assert.strictEqual(dailyState.completed, true);
+
+    logPass('Daily puzzles are 100% deterministic by date and record persistent streak completion');
+    totalTests += 5;
+  }
+
+  // =========================================================================
+  // TEST SUITE 10: DEEP SAVE INTEGRITY & CLUE IMMUTABILITY
+  // =========================================================================
+  logSuite('SUITE 10: Deep Save Integrity & Clue Immutability');
+  {
+    // 1. Contradictory clues check (clue != solution)
+    const validSol = Array.from({ length: 9 }, (_, r) =>
+      Array.from({ length: 9 }, (_, c) => ((r * 3 + Math.floor(r / 3) + c) % 9) + 1)
+    );
+    const corruptCluesSave = {
+      version: 3,
+      solution: validSol,
+      initial: Array.from({ length: 9 }, () => Array(9).fill(false)),
+      board: Array.from({ length: 9 }, () => Array(9).fill(0)),
+      notes: Array.from({ length: 9 }, () => Array(9).fill([])),
+    };
+    // Make cell (0,0) an initial clue with value 9, while solution is validSol[0][0]
+    corruptCluesSave.initial[0][0] = true;
+    corruptCluesSave.board[0][0] = (validSol[0][0] % 9) + 1; // mismatch!
+
+    const { engine } = createEnv({
+      sudoku_active_game: JSON.stringify(corruptCluesSave),
+    });
+    assert.strictEqual(
+      engine.getState().hasActiveGame,
+      false,
+      'Contradictory clue mismatch must be rejected'
+    );
+
+    // 2. Redo stack persistence across save/reload
+    const { window: win2, engine: eng2 } = createEnv();
+    eng2.startNewGame('EASY');
+    const st2 = eng2.getState();
+    let r = -1, c = -1;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (st2.board[i][j] === 0) { r = i; c = j; break; }
+      }
+      if (r !== -1) break;
+    }
+    eng2.selectCell(r, c);
+    eng2.handleNumberInput(st2.solution[r][c]);
+    eng2.handleUndo(); // Pushes to redo stack
+    eng2.saveActiveGame();
+
+    const savedRaw = win2.localStorage.getItem('sudoku_active_game');
+    assert.ok(savedRaw, 'Active game saved to localStorage');
+
+    // Load in fresh instance
+    const { engine: eng3 } = createEnv({
+      sudoku_active_game: savedRaw,
+    });
+    assert.strictEqual(eng3.getState().hasActiveGame, true);
+    assert.strictEqual(eng3.getState().redoStack.length, 1, 'Redo stack survived save & restore');
+    eng3.handleRedo();
+    assert.strictEqual(
+      eng3.getState().board[r][c],
+      st2.solution[r][c],
+      'Redo after restore correctly places number'
+    );
+
+    logPass('Deep save integrity guards prevent clue contradictions and preserve undo/redo state');
+    totalTests += 4;
+  }
+
+  // =========================================================================
   // SUMMARY
   // =========================================================================
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
