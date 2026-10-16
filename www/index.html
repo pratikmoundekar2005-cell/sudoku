@@ -15,13 +15,8 @@
     <!-- VIEW 1: HOME -->
     <section id="view-home" class="game-view active">
       <div class="view-content home-content">
-        <!-- Remotion Emblem Container -->
-        <div id="remotion-home-emblem" class="emblem-container">
-          <video class="remotion-video" autoplay loop muted playsinline poster="">
-            <source src="assets/animations/home-emblem.mp4" type="video/mp4">
-            <source src="assets/animations/home-emblem.webm" type="video/webm">
-          </video>
-          <!-- 60fps Remotion Spring Physics Canvas Mount -->
+        <!-- Pure 60fps Geometric Canvas Emblem -->
+        <div id="remotion-home-emblem" class="emblem-container" aria-hidden="true">
           <canvas id="canvas-home-emblem" class="remotion-canvas" width="280" height="280"></canvas>
         </div>
 
@@ -190,7 +185,7 @@
 
         <!-- Board Container (Placeholder 9x9 grid container ready for Phase 2) -->
         <main class="board-wrapper">
-          <div id="sudoku-board" class="sudoku-grid-container" aria-label="Sudoku Board">
+          <div id="sudoku-board" class="sudoku-grid-container" role="grid" aria-label="Sudoku Board">
             <!-- 81 cell shells populated or dynamically rendered in Phase 2 -->
           </div>
         </main>
@@ -370,13 +365,8 @@
     <!-- VICTORY / GAME OVER MODAL -->
     <div id="modal-result" class="modal-backdrop hidden" aria-modal="true" role="dialog">
       <div class="modal-card">
-        <!-- Remotion Victory Animation Mount -->
-        <div id="remotion-victory-anim" class="modal-animation-container">
-          <video class="remotion-video" muted playsinline>
-            <source src="assets/animations/victory-burst.mp4" type="video/mp4">
-            <source src="assets/animations/victory-burst.webm" type="video/webm">
-          </video>
-          <!-- 60fps Remotion Spring Physics Canvas Mount -->
+        <!-- 60fps Geometric Victory Burst Canvas Mount -->
+        <div id="remotion-victory-anim" class="modal-animation-container" aria-hidden="true">
           <canvas id="canvas-victory-burst" class="remotion-canvas" width="220" height="220"></canvas>
         </div>
 
@@ -400,6 +390,22 @@
           </button>
           <button id="btn-modal-home" class="btn-secondary">
             <span>RETURN HOME</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM NEW GAME MODAL -->
+    <div id="modal-confirm" class="modal-backdrop hidden" aria-modal="true" role="dialog">
+      <div class="modal-card">
+        <h3 class="modal-title">START NEW GAME?</h3>
+        <p class="modal-subtitle">You have a puzzle in progress. Starting a new game will discard your current board.</p>
+        <div class="modal-actions">
+          <button id="btn-confirm-new-game" class="btn-primary">
+            <span>START NEW</span>
+          </button>
+          <button id="btn-cancel-new-game" class="btn-secondary">
+            <span>RESUME CURRENT</span>
           </button>
         </div>
       </div>

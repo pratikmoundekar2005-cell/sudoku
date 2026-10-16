@@ -1,5 +1,5 @@
 /**
- * MINIMAL SUDOKU — PHASE 3: 10/10 DARK UI, REMOTION ANIMATIONS & LOCALSTORAGE PERSISTENCE
+ * MINIMAL SUDOKU — PHASE 7: HARDENING & REMEDIATION PATCH v1.1.0
  * Personal Phone Edition
  */
 
@@ -20,6 +20,14 @@
     MEDIUM: 45,
     HARD: 53,
   };
+
+  function prefersReducedMotion() {
+    return (
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
 
   // ==========================================================================
   // 2. NATIVE HAPTICS HELPER
@@ -272,7 +280,7 @@
     selectedCell: null, // { row, col } or null
     notesMode: false,
     mistakes: 0, // 0 to 3 max
-    undoStack: [], // Array of snapshots
+    undoStack: [], // Array of snapshots (capped at 50)
     status: 'PLAYING', // 'PLAYING' | 'WON' | 'LOST'
     startTime: null,
     elapsedSeconds: 0,
@@ -281,7 +289,12 @@
     currentView: 'view-home',
   };
 
+  let pendingDifficulty = null;
+
   function pushUndoSnapshot() {
+    if (state.undoStack.length >= 50) {
+      state.undoStack.shift();
+    }
     state.undoStack.push({
       board: cloneGrid(state.board),
       notes: cloneNotes(state.notes),
@@ -340,6 +353,11 @@
     btnModalPlayAgain: document.getElementById('btn-modal-play-again'),
     btnModalHome: document.getElementById('btn-modal-home'),
 
+    // Confirmation Modal
+    modalConfirm: document.getElementById('modal-confirm'),
+    btnConfirmNewGame: document.getElementById('btn-confirm-new-game'),
+    btnCancelNewGame: document.getElementById('btn-cancel-new-game'),
+
     // History View
     statGamesWon: document.getElementById('stat-games-won'),
     statWinRate: document.getElementById('stat-win-rate'),
@@ -353,15 +371,30 @@
   };
 
   // ==========================================================================
-  // 6. VIEW ROUTER
+  // 6. VIEW ROUTER & SPA HISTORY MANAGEMENT
   // ==========================================================================
 
-  function navigateTo(viewId) {
+  function navigateTo(viewId, isPopState = false) {
+    // If leaving game arena, pause timer and auto-save active game
+    if (state.currentView === 'view-game' && viewId !== 'view-game') {
+      stopTimer();
+      saveActiveGame();
+    }
+
     Object.values(views).forEach((v) => v && v.classList.remove('active'));
     const target = document.getElementById(viewId);
     if (target) {
       target.classList.add('active');
       state.currentView = viewId;
+    }
+
+    // SPA History push for Android Hardware Back navigation
+    if (!isPopState) {
+      if (viewId === 'view-home') {
+        history.replaceState({ view: 'view-home' }, '');
+      } else {
+        history.pushState({ view: viewId }, '');
+      }
     }
 
     if (viewId === 'view-home') {
@@ -373,6 +406,12 @@
 
     if (viewId === 'view-history') {
       renderHistoryAndStats();
+    }
+
+    if (viewId === 'view-game') {
+      if (state.status === 'PLAYING') {
+        startTimer();
+      }
     }
   }
 
@@ -426,14 +465,20 @@
   }
 
   // ==========================================================================
-  // 8. LOCALSTORAGE AUTO-SAVE & HISTORY SYSTEM
+  // 8. LOCALSTORAGE AUTO-SAVE & HISTORY SYSTEM (SCHEMA v2)
   // ==========================================================================
+
+  function isValid9x9Grid(grid) {
+    if (!Array.isArray(grid) || grid.length !== 9) return false;
+    return grid.every((row) => Array.isArray(row) && row.length === 9);
+  }
 
   function saveActiveGame() {
     if (state.status !== 'PLAYING') return;
 
     try {
       const payload = {
+        version: 2,
         solution: state.solution,
         initial: state.initial,
         board: state.board,
@@ -468,26 +513,50 @@
   function loadActiveGame() {
     try {
       const raw = localStorage.getItem(STORAGE_ACTIVE_GAME);
-      if (!raw) return false;
+      if (!raw) {
+        state.hasActiveGame = false;
+        updateHomeResumeCard();
+        return false;
+      }
 
       const data = JSON.parse(raw);
-      if (!data || !data.board || !data.solution) return false;
+      if (!data || data.version !== 2) {
+        // Discard older schema or malformed data
+        localStorage.removeItem(STORAGE_ACTIVE_GAME);
+        state.hasActiveGame = false;
+        updateHomeResumeCard();
+        return false;
+      }
+
+      if (
+        !isValid9x9Grid(data.board) ||
+        !isValid9x9Grid(data.solution) ||
+        !isValid9x9Grid(data.initial) ||
+        !isValid9x9Grid(data.notes)
+      ) {
+        localStorage.removeItem(STORAGE_ACTIVE_GAME);
+        state.hasActiveGame = false;
+        updateHomeResumeCard();
+        return false;
+      }
 
       state.solution = data.solution;
       state.initial = data.initial;
       state.board = data.board;
       state.notes = deserializeNotes(data.notes);
-      state.mistakes = data.mistakes || 0;
+      state.mistakes = typeof data.mistakes === 'number' ? data.mistakes : 0;
       state.difficulty = data.difficulty || 'MEDIUM';
-      state.undoStack = (data.undoStack || []).map((snap) => ({
-        board: snap.board,
-        notes: deserializeNotes(snap.notes),
-      }));
-      state.elapsedSeconds = data.elapsedSeconds || 0;
+      state.undoStack = (data.undoStack || [])
+        .filter((s) => isValid9x9Grid(s.board) && isValid9x9Grid(s.notes))
+        .map((snap) => ({
+          board: snap.board,
+          notes: deserializeNotes(snap.notes),
+        }));
+      state.elapsedSeconds = typeof data.elapsedSeconds === 'number' ? data.elapsedSeconds : 0;
       state.hasActiveGame = true;
       state.status = 'PLAYING';
 
-      // Find first empty or selected cell
+      // Find first empty cell or fallback
       state.selectedCell = null;
       for (let r = 0; r < 9; r++) {
         for (let c = 0; c < 9; c++) {
@@ -504,6 +573,11 @@
       return true;
     } catch (err) {
       console.warn('[LocalStorage] Load failed:', err);
+      try {
+        localStorage.removeItem(STORAGE_ACTIVE_GAME);
+      } catch (e) {}
+      state.hasActiveGame = false;
+      updateHomeResumeCard();
       return false;
     }
   }
@@ -572,62 +646,120 @@
       elements.statWinrateRing.style.strokeDashoffset = offset;
     }
 
-    // Populate history cards list
+    // Populate history cards list safely via DOM APIs (XSS prevention)
     if (elements.historyList) {
+      elements.historyList.textContent = '';
+
       if (records.length === 0) {
-        elements.historyList.innerHTML = `
-          <div class="history-item empty-history" style="justify-content: center; opacity: 0.5; padding: 24px;">
-            <span>No games logged yet. Start a match!</span>
-          </div>
-        `;
+        const emptyItem = document.createElement('div');
+        emptyItem.className = 'history-item empty-history';
+        emptyItem.style.cssText = 'justify-content: center; opacity: 0.5; padding: 24px;';
+        const emptySpan = document.createElement('span');
+        emptySpan.textContent = 'No games logged yet. Start a match!';
+        emptyItem.appendChild(emptySpan);
+        elements.historyList.appendChild(emptyItem);
         return;
       }
 
-      elements.historyList.innerHTML = records
-        .map((r) => {
-          const isWon = r.result === 'WON';
-          const b1Lit = '#9D7BFF';
-          const b2Lit = r.difficulty !== 'EASY' ? '#9D7BFF' : '#F2EFF9';
-          const b3Lit = r.difficulty === 'HARD' ? '#9D7BFF' : '#F2EFF9';
-          const b2Op = r.difficulty !== 'EASY' ? '1' : '0.2';
-          const b3Op = r.difficulty === 'HARD' ? '1' : '0.2';
+      records.forEach((r) => {
+        const isWon = r.result === 'WON';
+        const itemEl = document.createElement('div');
+        itemEl.className = 'history-item';
 
-          return `
-            <div class="history-item">
-              <div class="history-item-left">
-                <svg viewBox="0 0 16 12" class="signal-mini-bars">
-                  <rect x="1" y="8" width="3" height="4" rx="1" fill="${b1Lit}" />
-                  <rect x="6.5" y="4" width="3" height="8" rx="1" fill="${b2Lit}" fill-opacity="${b2Op}" />
-                  <rect x="12" y="1" width="3" height="11" rx="1" fill="${b3Lit}" fill-opacity="${b3Op}" />
-                </svg>
-                <div class="history-details">
-                  <span class="history-difficulty">${r.difficulty}</span>
-                  <span class="history-date">${formatDate(r.timestamp)}</span>
-                </div>
-              </div>
-              <div class="history-status ${isWon ? 'completed' : 'failed'}" style="${!isWon ? 'color: rgba(242, 239, 249, 0.45); background: rgba(242, 239, 249, 0.06);' : ''}">
-                <span>${isWon ? 'SOLVED' : 'FAILED'}</span>
-              </div>
-            </div>
-          `;
-        })
-        .join('');
+        const leftEl = document.createElement('div');
+        leftEl.className = 'history-item-left';
+
+        // SVG Signal bars
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 16 12');
+        svg.setAttribute('class', 'signal-mini-bars');
+
+        const b1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        b1.setAttribute('x', '1');
+        b1.setAttribute('y', '8');
+        b1.setAttribute('width', '3');
+        b1.setAttribute('height', '4');
+        b1.setAttribute('rx', '1');
+        b1.setAttribute('fill', '#9D7BFF');
+        svg.appendChild(b1);
+
+        const b2 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        b2.setAttribute('x', '6.5');
+        b2.setAttribute('y', '4');
+        b2.setAttribute('width', '3');
+        b2.setAttribute('height', '8');
+        b2.setAttribute('rx', '1');
+        b2.setAttribute('fill', r.difficulty !== 'EASY' ? '#9D7BFF' : '#F2EFF9');
+        b2.setAttribute('fill-opacity', r.difficulty !== 'EASY' ? '1' : '0.2');
+        svg.appendChild(b2);
+
+        const b3 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        b3.setAttribute('x', '12');
+        b3.setAttribute('y', '1');
+        b3.setAttribute('width', '3');
+        b3.setAttribute('height', '11');
+        b3.setAttribute('rx', '1');
+        b3.setAttribute('fill', r.difficulty === 'HARD' ? '#9D7BFF' : '#F2EFF9');
+        b3.setAttribute('fill-opacity', r.difficulty === 'HARD' ? '1' : '0.2');
+        svg.appendChild(b3);
+
+        leftEl.appendChild(svg);
+
+        const detailsEl = document.createElement('div');
+        detailsEl.className = 'history-details';
+
+        const diffSpan = document.createElement('span');
+        diffSpan.className = 'history-difficulty';
+        diffSpan.textContent = r.difficulty || 'MEDIUM';
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'history-date';
+        dateSpan.textContent = formatDate(r.timestamp);
+
+        detailsEl.appendChild(diffSpan);
+        detailsEl.appendChild(dateSpan);
+        leftEl.appendChild(detailsEl);
+        itemEl.appendChild(leftEl);
+
+        const statusEl = document.createElement('div');
+        statusEl.className = `history-status ${isWon ? 'completed' : 'failed'}`;
+        if (!isWon) {
+          statusEl.style.cssText =
+            'color: rgba(242, 239, 249, 0.45); background: rgba(242, 239, 249, 0.06);';
+        }
+        const statusSpan = document.createElement('span');
+        statusSpan.textContent = isWon ? 'SOLVED' : 'FAILED';
+        statusEl.appendChild(statusSpan);
+        itemEl.appendChild(statusEl);
+
+        elements.historyList.appendChild(itemEl);
+      });
     }
   }
 
   // ==========================================================================
-  // 9. LIVE INFOGRAPHIC CALCULATIONS
+  // 9. LIVE INFOGRAPHIC CALCULATIONS (BUG 3 PLAYER-ONLY PROGRESS MATH)
   // ==========================================================================
 
   function updateCompletion() {
-    let filled = 0;
+    let initialClueCount = 0;
+    let currentFilledCount = 0;
+
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
-        if (state.board[r][c] !== 0) filled++;
+        if (state.initial && state.initial[r] && state.initial[r][c]) {
+          initialClueCount++;
+        }
+        if (state.board[r][c] !== 0) {
+          currentFilledCount++;
+        }
       }
     }
 
-    const percentage = Math.floor((filled / 81) * 100);
+    const totalToFill = 81 - initialClueCount;
+    const playerFilled = Math.max(0, currentFilledCount - initialClueCount);
+    const percentage =
+      totalToFill > 0 ? Math.min(100, Math.floor((playerFilled / totalToFill) * 100)) : 100;
 
     // Update Progress Ring (circumference = 2 * PI * 18 ≈ 113.1)
     const circumference = 113.1;
@@ -643,7 +775,6 @@
   }
 
   function updateKeypad() {
-    // Count occurrences of each digit 1-9 on board
     const counts = Array(10).fill(0);
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
@@ -655,7 +786,6 @@
     elements.keyBtns.forEach((btn) => {
       const num = parseInt(btn.dataset.key, 10);
       const placed = counts[num] || 0;
-      // Micro-bar shrinks proportionally as remaining placements go from 9 down to 0
       const remaining = Math.max(0, 9 - placed);
       const percent = Math.floor((remaining / 9) * 100);
 
@@ -664,7 +794,6 @@
         microFill.style.width = `${percent}%`;
       }
 
-      // When all 9 are placed, smoothly fade to opacity 0.2 and disable pointer events
       if (remaining === 0) {
         btn.classList.add('completed');
       } else {
@@ -737,7 +866,7 @@
   }
 
   // ==========================================================================
-  // 10. 9x9 GRID HIERARCHY & SIGHTLINE HIGHLIGHTING
+  // 10. 9x9 GRID HIERARCHY, ACCESSIBILITY & SIGHTLINE HIGHLIGHTING
   // ==========================================================================
 
   function renderBoard(isStaggered = false) {
@@ -749,7 +878,6 @@
       ? Math.floor(selected.row / 3) * 3 + Math.floor(selected.col / 3)
       : -1;
 
-    // Check if 9 3x3 box containers exist
     let boxContainers = elements.boardContainer.querySelectorAll('.sudoku-box');
     const needsBuild = boxContainers.length !== 9;
 
@@ -772,10 +900,20 @@
             cell.className = 'sudoku-cell';
             cell.dataset.row = row;
             cell.dataset.col = col;
+            cell.setAttribute('role', 'gridcell');
+            cell.setAttribute('tabindex', '0');
 
             cell.addEventListener('click', () => {
-              triggerHaptic(10); // Crisp 10ms tick
+              triggerHaptic(10);
               selectCell(row, col);
+            });
+
+            cell.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                triggerHaptic(10);
+                selectCell(row, col);
+              }
             });
 
             boxEl.appendChild(cell);
@@ -791,12 +929,12 @@
       const r = parseInt(cell.dataset.row, 10);
       const c = parseInt(cell.dataset.col, 10);
       const val = state.board[r][c];
-      const isInitial = state.initial[r][c];
+      const isInitial = state.initial && state.initial[r] && state.initial[r][c];
       const currentBox = Math.floor(r / 3) * 3 + Math.floor(c / 3);
 
       cell.className = 'sudoku-cell';
 
-      if (isStaggered) {
+      if (isStaggered && !prefersReducedMotion()) {
         cell.classList.add('stagger-in');
         cell.style.animationDelay = `${(r + c) * 22}ms`;
       } else {
@@ -805,11 +943,11 @@
 
       // 3-Tier Sightline Highlighting
       const isSelected = selected && selected.row === r && selected.col === c;
+      cell.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
       if (isSelected) {
-        // Tier 1: Selected cell (scale-up + 2px amethyst border)
         cell.classList.add('selected');
       } else if (selected) {
-        // Tier 2: Peer cells (same row, col, or box)
         const isPeer =
           selected.row === r ||
           selected.col === c ||
@@ -819,17 +957,18 @@
         }
       }
 
-      // Tier 3: Identical numbers across the board
       if (val !== 0 && selectedNum !== 0 && val === selectedNum && !isSelected) {
         cell.classList.add('matching-num');
       }
 
-      // Typography & Value Display
+      // Typography, Value & ARIA Labels
+      let ariaLabel = `Row ${r + 1}, Column ${c + 1}`;
+
       if (val !== 0) {
         cell.classList.add(isInitial ? 'initial-clue' : 'user-input');
         cell.textContent = val;
+        ariaLabel += `, ${val}${isInitial ? ' (given)' : ''}`;
       } else {
-        // Render 3x3 pencil notes mini-grid
         const notesSet = state.notes[r][c];
         if (notesSet && notesSet.size > 0) {
           let notesHtml = '<div class="notes-grid">';
@@ -839,10 +978,14 @@
           }
           notesHtml += '</div>';
           cell.innerHTML = notesHtml;
+          ariaLabel += `, empty, notes: ${Array.from(notesSet).sort().join(', ')}`;
         } else {
           cell.textContent = '';
+          ariaLabel += ', empty';
         }
       }
+
+      cell.setAttribute('aria-label', ariaLabel);
     });
 
     updateCompletion();
@@ -857,7 +1000,6 @@
     renderBoard(false);
   }
 
-  // Check if a line or 3x3 box completed on move
   function checkPeerCompletions(r, c) {
     let rowComplete = true;
     let colComplete = true;
@@ -885,7 +1027,7 @@
     }
 
     if (rowComplete || colComplete || boxComplete) {
-      triggerHaptic([15, 40, 25]); // Completion celebration haptic
+      triggerHaptic([15, 40, 25]);
     }
   }
 
@@ -896,11 +1038,11 @@
   function handleNumberInput(num) {
     if (!state.selectedCell || state.status !== 'PLAYING') return;
 
-    triggerHaptic(10); // Tap haptic
+    triggerHaptic(10);
 
     const { row: r, col: c } = state.selectedCell;
 
-    if (state.initial[r][c]) return;
+    if (state.initial && state.initial[r] && state.initial[r][c]) return;
 
     if (state.notesMode) {
       if (state.board[r][c] === 0) {
@@ -946,7 +1088,7 @@
       // INCORRECT PLACEMENT
       state.mistakes++;
       updateMistakeDots();
-      triggerHaptic([40, 50, 40]); // Mistake penalty haptic
+      triggerHaptic([40, 50, 40]);
 
       triggerCellConflict(r, c);
       saveActiveGame();
@@ -974,7 +1116,7 @@
     triggerHaptic(10);
 
     const { row: r, col: c } = state.selectedCell;
-    if (state.initial[r][c]) return;
+    if (state.initial && state.initial[r] && state.initial[r][c]) return;
 
     if (state.board[r][c] !== 0 || state.notes[r][c].size > 0) {
       pushUndoSnapshot();
@@ -1034,7 +1176,7 @@
   }
 
   // ==========================================================================
-  // 12. RESULT MODAL & GAME INITIALIZATION
+  // 12. RESULT & CONFIRMATION MODALS & GAME INITIALIZATION
   // ==========================================================================
 
   function showModal(isVictory) {
@@ -1064,8 +1206,48 @@
     }
   }
 
+  function showConfirmModal(targetDifficulty) {
+    pendingDifficulty = targetDifficulty;
+    if (elements.modalConfirm) {
+      elements.modalConfirm.classList.remove('hidden');
+    }
+  }
+
+  function hideConfirmModal() {
+    pendingDifficulty = null;
+    if (elements.modalConfirm) {
+      elements.modalConfirm.classList.add('hidden');
+    }
+  }
+
+  function requestNewGame(difficulty = 'MEDIUM') {
+    const diffUpper = difficulty.toUpperCase();
+
+    // Check if there is an active game with player progress
+    if (state.hasActiveGame && state.status === 'PLAYING') {
+      let initialCount = 0;
+      let filledCount = 0;
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (state.initial && state.initial[r] && state.initial[r][c]) initialCount++;
+          if (state.board[r][c] !== 0) filledCount++;
+        }
+      }
+      const hasProgress =
+        filledCount > initialCount || state.mistakes > 0 || state.elapsedSeconds > 10;
+
+      if (hasProgress) {
+        showConfirmModal(diffUpper);
+        return;
+      }
+    }
+
+    startNewGame(diffUpper);
+  }
+
   function startNewGame(difficulty = 'MEDIUM') {
     hideModal();
+    hideConfirmModal();
     const diffUpper = difficulty.toUpperCase();
     state.difficulty = diffUpper;
 
@@ -1098,8 +1280,7 @@
       if (state.selectedCell) break;
     }
 
-    renderBoard(true); // Staggered entry animation
-    startTimer();
+    renderBoard(true);
     saveActiveGame();
     navigateTo('view-game');
   }
@@ -1108,9 +1289,72 @@
   // 13. REMOTION MOTION ASSETS: 60FPS SPRING-PHYSICS ENGINES
   // ==========================================================================
 
-  // --- HOME EMBLEM 60FPS ENGINE ---
-  // 4-second seamless loop: 3x3 geometric grid pulsing and rotating in #9D7BFF and #F2EFF9 against #0F0E13
   let homeAnimFrameId = null;
+
+  function renderStaticHomeEmblem(ctx, size) {
+    ctx.clearRect(0, 0, size, size);
+    const cx = size / 2;
+    const cy = size / 2;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 72, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(242, 239, 249, 0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 6]);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 54, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(157, 123, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 7]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const sqSize = 18;
+    const gap = 6;
+    const start = -((3 * sqSize + 2 * gap) / 2) + sqSize / 2;
+
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const x = start + c * (sqSize + gap);
+        const y = start + r * (sqSize + gap);
+        const isCenter = r === 1 && c === 1;
+
+        ctx.beginPath();
+        ctx.roundRect(x - sqSize / 2, y - sqSize / 2, sqSize, sqSize, 4);
+
+        if (isCenter) {
+          ctx.fillStyle = '#181620';
+          ctx.fill();
+          ctx.strokeStyle = '#9D7BFF';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(x - 4, y);
+          ctx.lineTo(x + 4, y);
+          ctx.moveTo(x, y - 4);
+          ctx.lineTo(x, y + 4);
+          ctx.strokeStyle = '#F2EFF9';
+          ctx.lineWidth = 1.5;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#181620';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(157, 123, 255, 0.3)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
   function startHomeCanvasAnimation() {
     if (!elements.canvasHome) return;
     const canvas = elements.canvasHome;
@@ -1119,20 +1363,25 @@
 
     stopHomeCanvasAnimation();
 
-    const period = 4000; // 4000ms = 4 seconds seamless loop
     const dpr = window.devicePixelRatio || 1;
     const size = 280;
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     ctx.scale(dpr, dpr);
 
-    function draw(timestamp) {
-      if (state.currentView !== 'view-home') return;
+    if (prefersReducedMotion()) {
+      renderStaticHomeEmblem(ctx, size);
+      return;
+    }
 
-      const progress = (timestamp % period) / period; // 0 to 1
+    const period = 4000;
+
+    function draw(timestamp) {
+      if (state.currentView !== 'view-home' || document.hidden) return;
+
+      const progress = (timestamp % period) / period;
       const theta = progress * Math.PI * 2;
 
-      // Pure Obsidian clear
       ctx.clearRect(0, 0, size, size);
 
       const cx = size / 2;
@@ -1141,15 +1390,12 @@
       ctx.save();
       ctx.translate(cx, cy);
 
-      // Gentle rotation: smooth sine wave
       const rot = Math.sin(theta) * 0.08;
       ctx.rotate(rot);
 
-      // Subtle pulse scale: 0.96 to 1.04
       const scale = 1 + Math.sin(theta) * 0.04;
       ctx.scale(scale, scale);
 
-      // Outer faint dashed orbit ring in lavender mist
       ctx.beginPath();
       ctx.arc(0, 0, 72, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(242, 239, 249, 0.12)';
@@ -1157,7 +1403,6 @@
       ctx.setLineDash([4, 6]);
       ctx.stroke();
 
-      // Inner amethyst accent ring
       ctx.beginPath();
       ctx.arc(0, 0, 54, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(157, 123, 255, 0.35)';
@@ -1166,7 +1411,6 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 3x3 geometric grid
       const sqSize = 18;
       const gap = 6;
       const start = -((3 * sqSize + 2 * gap) / 2) + sqSize / 2;
@@ -1181,14 +1425,12 @@
           ctx.roundRect(x - sqSize / 2, y - sqSize / 2, sqSize, sqSize, 4);
 
           if (isCenter) {
-            // Center focal cell: Elevated surface obsidian + Amethyst accent
             ctx.fillStyle = '#181620';
             ctx.fill();
             ctx.strokeStyle = '#9D7BFF';
             ctx.lineWidth = 1.8;
             ctx.stroke();
 
-            // Center crosshair in lavender
             ctx.beginPath();
             ctx.moveTo(x - 4, y);
             ctx.lineTo(x + 4, y);
@@ -1199,7 +1441,6 @@
             ctx.lineCap = 'round';
             ctx.stroke();
           } else {
-            // Surrounding cells: subtle glow
             const cellPhase = theta + (r * 3 + c) * 0.35;
             const alpha = 0.25 + Math.sin(cellPhase) * 0.15;
             ctx.fillStyle = '#181620';
@@ -1226,9 +1467,8 @@
     }
   }
 
-  // --- VICTORY BURST 60FPS SPRING-PHYSICS ENGINE ---
-  // 2.5-second smooth spring-physics geometric expansion of 9 amethyst squares locking into place
   let victoryAnimFrameId = null;
+
   function playVictoryBurstAnimation() {
     if (!elements.canvasVictory) return;
     const canvas = elements.canvasVictory;
@@ -1248,34 +1488,19 @@
     canvas.height = size * dpr;
     ctx.scale(dpr, dpr);
 
-    const startTime = performance.now();
-    const duration = 2500; // 2.5 seconds
+    const targetSqSize = 16;
+    const targetGap = 5;
+    const fullGridWidth = 3 * targetSqSize + 2 * targetGap;
+    const startOffset = -(fullGridWidth / 2) + targetSqSize / 2;
 
-    // Damped harmonic spring function: Remotion spring physics model
-    function springEasing(t) {
-      // Damping = 12, Stiffness = 100
-      const c = 0.5;
-      const omega = 12;
-      return 1 - Math.exp(-c * omega * t) * Math.cos(omega * t);
-    }
-
-    function render(now) {
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      const t = progress * 2.2; // Spring timeframe
-
+    function renderVictoryFrame(springVal, progress) {
       ctx.clearRect(0, 0, size, size);
-
       const cx = size / 2;
       const cy = size / 2;
 
       ctx.save();
       ctx.translate(cx, cy);
 
-      // Expansion spring value
-      const springVal = springEasing(t);
-
-      // Radial burst sparkle particles during first 1.2s
       if (progress < 0.6) {
         const burstT = progress / 0.6;
         const particleDist = burstT * 68;
@@ -1292,7 +1517,6 @@
         }
       }
 
-      // Outer settlement ring
       const ringAlpha = Math.min(1, progress * 1.5) * 0.4;
       ctx.beginPath();
       ctx.arc(0, 0, 48 * springVal, 0, Math.PI * 2);
@@ -1300,18 +1524,11 @@
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // 9 Amethyst squares locking into place
-      const targetSqSize = 16;
-      const targetGap = 5;
-      const fullGridWidth = 3 * targetSqSize + 2 * targetGap;
-      const startOffset = -(fullGridWidth / 2) + targetSqSize / 2;
-
       for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 3; c++) {
           const targetX = startOffset + c * (targetSqSize + targetGap);
           const targetY = startOffset + r * (targetSqSize + targetGap);
 
-          // Animate position outwards from center using spring physics
           const curX = targetX * springVal;
           const curY = targetY * springVal;
           const curSize = Math.max(0, targetSqSize * springVal);
@@ -1325,7 +1542,6 @@
           ctx.lineWidth = 1.5;
           ctx.stroke();
 
-          // Subtle victory checkmark in center square when locked
           if (r === 1 && c === 1 && progress > 0.4) {
             const checkAlpha = Math.min(1, (progress - 0.4) / 0.3);
             ctx.beginPath();
@@ -1342,20 +1558,96 @@
       }
 
       ctx.restore();
+    }
+
+    if (prefersReducedMotion()) {
+      renderVictoryFrame(1, 1);
+      return;
+    }
+
+    const startTime = performance.now();
+    const duration = 2500;
+
+    function springEasing(t) {
+      const c = 0.5;
+      const omega = 12;
+      return 1 - Math.exp(-c * omega * t) * Math.cos(omega * t);
+    }
+
+    function render(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const t = progress * 2.2;
+      const springVal = springEasing(t);
+
+      renderVictoryFrame(springVal, progress);
 
       if (progress < 1) {
         victoryAnimFrameId = window.requestAnimationFrame(render);
       }
     }
 
-    victoryAnimFrameId = requestAnimationFrame(render);
+    victoryAnimFrameId = window.requestAnimationFrame(render);
   }
 
   // ==========================================================================
-  // 14. EVENT LISTENERS
+  // 14. EVENT LISTENERS & LIFECYCLE MANAGEMENT
   // ==========================================================================
 
   function initEventListeners() {
+    // Hardware Back / SPA History PopState
+    window.addEventListener('popstate', (e) => {
+      // If confirm modal is open, dismiss it
+      if (elements.modalConfirm && !elements.modalConfirm.classList.contains('hidden')) {
+        hideConfirmModal();
+        return;
+      }
+      // If result modal is open, dismiss it and return to home
+      if (elements.modalResult && !elements.modalResult.classList.contains('hidden')) {
+        hideModal();
+        navigateTo('view-home', true);
+        return;
+      }
+
+      const targetView = e.state && e.state.view ? e.state.view : 'view-home';
+      navigateTo(targetView, true);
+    });
+
+    // Page Visibility & Window Focus/Blur for native battery preservation & timer pause
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopTimer();
+        stopHomeCanvasAnimation();
+        if (state.status === 'PLAYING') {
+          saveActiveGame();
+        }
+      } else {
+        if (state.currentView === 'view-game' && state.status === 'PLAYING') {
+          startTimer();
+        } else if (state.currentView === 'view-home') {
+          startHomeCanvasAnimation();
+        }
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      stopTimer();
+      stopHomeCanvasAnimation();
+      if (state.status === 'PLAYING') {
+        saveActiveGame();
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (!document.hidden) {
+        if (state.currentView === 'view-game' && state.status === 'PLAYING') {
+          startTimer();
+        } else if (state.currentView === 'view-home') {
+          startHomeCanvasAnimation();
+        }
+      }
+    });
+
     // Navigation back buttons
     document.querySelectorAll('.btn-nav-back').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1383,11 +1675,8 @@
     if (elements.btnHomeResume) {
       elements.btnHomeResume.addEventListener('click', () => {
         triggerHaptic(10);
-        if (state.hasActiveGame) {
-          startTimer();
+        if (state.hasActiveGame && state.status === 'PLAYING') {
           navigateTo('view-game');
-        } else {
-          startNewGame('MEDIUM');
         }
       });
     }
@@ -1397,7 +1686,7 @@
       card.addEventListener('click', () => {
         triggerHaptic(10);
         const diff = (card.dataset.difficulty || 'medium').toUpperCase();
-        startNewGame(diff);
+        requestNewGame(diff);
       });
     });
 
@@ -1407,17 +1696,37 @@
         triggerHaptic(10);
         const cycle = { EASY: 'MEDIUM', MEDIUM: 'HARD', HARD: 'EASY' };
         const nextDiff = cycle[state.difficulty] || 'MEDIUM';
-        startNewGame(nextDiff);
+        requestNewGame(nextDiff);
       });
     }
 
-    // Game Arena back button (pauses timer and saves active state)
+    // Game Arena back button
     if (elements.btnGameBack) {
       elements.btnGameBack.addEventListener('click', () => {
         triggerHaptic(10);
         stopTimer();
         saveActiveGame();
         navigateTo('view-home');
+      });
+    }
+
+    // Confirmation Modal actions
+    if (elements.btnConfirmNewGame) {
+      elements.btnConfirmNewGame.addEventListener('click', () => {
+        triggerHaptic(10);
+        const targetDiff = pendingDifficulty || state.difficulty || 'MEDIUM';
+        hideConfirmModal();
+        startNewGame(targetDiff);
+      });
+    }
+
+    if (elements.btnCancelNewGame) {
+      elements.btnCancelNewGame.addEventListener('click', () => {
+        triggerHaptic(10);
+        hideConfirmModal();
+        if (state.hasActiveGame && state.status === 'PLAYING') {
+          navigateTo('view-game');
+        }
       });
     }
 
@@ -1461,8 +1770,34 @@
       });
     }
 
-    // Desktop Keyboard controls
+    // Keyboard controls
     window.addEventListener('keydown', (e) => {
+      // Escape key handles modals or returning home
+      if (e.key === 'Escape') {
+        if (elements.modalConfirm && !elements.modalConfirm.classList.contains('hidden')) {
+          hideConfirmModal();
+          return;
+        }
+        if (elements.modalResult && !elements.modalResult.classList.contains('hidden')) {
+          hideModal();
+          navigateTo('view-home');
+          return;
+        }
+        if (state.currentView !== 'view-home') {
+          navigateTo('view-home');
+          return;
+        }
+      }
+
+      // Scoped input guard: only accept cell/game inputs if inside view-game and no modal is open
+      const isConfirmOpen =
+        elements.modalConfirm && !elements.modalConfirm.classList.contains('hidden');
+      const isResultOpen =
+        elements.modalResult && !elements.modalResult.classList.contains('hidden');
+      if (state.currentView !== 'view-game' || isConfirmOpen || isResultOpen) {
+        return;
+      }
+
       if (state.status !== 'PLAYING') return;
 
       if (e.key >= '1' && e.key <= '9') {
@@ -1471,10 +1806,15 @@
         handleErase();
       } else if (e.key === 'n' || e.key === 'N') {
         toggleNotesMode();
-      } else if ((e.ctrlKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'u' || e.key === 'U') {
+      } else if (
+        (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) ||
+        e.key === 'u' ||
+        e.key === 'U'
+      ) {
         e.preventDefault();
         handleUndo();
       } else if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
         if (!state.selectedCell) {
           selectCell(0, 0);
           return;
@@ -1484,7 +1824,6 @@
         else if (e.key === 'ArrowDown') row = (row + 1) % 9;
         else if (e.key === 'ArrowLeft') col = (col + 8) % 9;
         else if (e.key === 'ArrowRight') col = (col + 1) % 9;
-        triggerHaptic(10);
         selectCell(row, col);
       }
     });
@@ -1498,14 +1837,10 @@
     initEventListeners();
 
     // Check for saved active game from previous session
-    const hasRestored = loadActiveGame();
-    if (!hasRestored) {
-      // Pre-initialize a default board
-      startNewGame('MEDIUM');
-    }
+    loadActiveGame();
 
     renderHistoryAndStats();
-    navigateTo('view-home');
+    navigateTo('view-home', true);
   }
 
   if (document.readyState === 'loading') {
@@ -1514,21 +1849,29 @@
     init();
   }
 
-  // Debugging & test harness exports
-  window.SudokuEngine = {
-    generatePuzzle,
-    countSolutions,
-    startNewGame,
-    selectCell,
-    handleNumberInput,
-    handleErase,
-    handleUndo,
-    toggleNotesMode,
-    navigateTo,
-    triggerHaptic,
-    saveActiveGame,
-    loadActiveGame,
-    getHistoryRecords,
-    getState: () => ({ ...state }),
-  };
+  // Gate test harness / debug API to local development only
+  if (
+    typeof window !== 'undefined' &&
+    (window.__DEV__ ||
+      (window.location &&
+        (window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1')))
+  ) {
+    window.SudokuEngine = {
+      generatePuzzle,
+      countSolutions,
+      startNewGame,
+      selectCell,
+      handleNumberInput,
+      handleErase,
+      handleUndo,
+      toggleNotesMode,
+      navigateTo,
+      triggerHaptic,
+      saveActiveGame,
+      loadActiveGame,
+      getHistoryRecords,
+      getState: () => ({ ...state }),
+    };
+  }
 })();
